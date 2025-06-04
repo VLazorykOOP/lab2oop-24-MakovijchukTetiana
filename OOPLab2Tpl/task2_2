@@ -1,0 +1,85 @@
+#include <iostream>
+#include <fstream>
+#include <string>
+
+using namespace std;
+
+bool checkParity(unsigned short encrypted, int startBit, int endBit, int parityBit) {
+    bool parity = false;
+    for (int i = startBit; i <= endBit; i++) {
+        if (encrypted & (1 << i)) {
+            parity = !parity;
+        }
+    }
+    return (parity == ((encrypted >> parityBit) & 1));
+}
+
+void Rozshifruvanna(unsigned short Rez[64], char text[4][16]) {
+    for (int i = 0; i < 64; i++) {
+        unsigned short encrypted = Rez[i];
+        int row = (encrypted >> 4) & 0x03;
+        int pos = (encrypted >> 6) & 0x0F;
+        
+        // Перевірка бітів парності
+        bool valid = true;
+        if (!checkParity(encrypted, 4, 9, 14)) {
+            cerr << "Помилка парності (поля 4-9) у символі " << i << endl;
+            valid = false;
+        }
+        if (!checkParity(encrypted, 0, 13, 15)) {
+            cerr << "Помилка парності (ASCII код) у символі " << i << endl;
+            valid = false;
+        }
+        
+        // Відновлення символу
+        char c = ((encrypted >> 10) & 0x0F) << 4;
+        c |= encrypted & 0x0F;
+        
+        text[row][pos] = c;
+    }
+}
+
+int main() {
+    unsigned short Rez[64];
+    char text[4][16];
+    
+    // Читання зашифрованих даних
+    ifstream inputFile("encrypted.bin", ios::binary);
+    if (!inputFile.is_open()) {
+        cerr << "Помилка відкриття файлу encrypted.bin" << endl;
+        return 1;
+    }
+    inputFile.read((char*)Rez, sizeof(Rez));
+    inputFile.close();
+    
+    // Розшифрування
+    Rozshifruvanna(Rez, text);
+    
+    // Вивід у консоль
+    cout << "Розшифрований текст:" << endl;
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 16; j++) {
+            cout << text[i][j];
+        }
+        cout << endl;
+    }
+    
+    // Запис у файл
+    ofstream outputFile("decrypted.txt");
+    if (!outputFile.is_open()) {
+        cerr << "Помилка відкриття файлу decrypted.txt" << endl;
+        return 1;
+    }
+    
+    for (int i = 0; i < 4; i++) {
+        for (int j = 0; j < 16; j++) {
+            outputFile << text[i][j];
+        }
+        outputFile << endl;
+    }
+    outputFile.close();
+    
+    cout << "Результат записано у файл 'decrypted.txt'" << endl;
+    
+    return 0;
+}
